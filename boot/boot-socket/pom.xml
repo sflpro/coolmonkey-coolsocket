@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>boot</artifactId>
+        <groupId>com.sfl.coolmonkey.coolsocket.boot</groupId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>boot-socket</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.sfl.coolmonkey.coolsocket.api.socket</groupId>
+            <artifactId>socket-controller</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sfl.coolmonkey.coolsocket.queue</groupId>
+            <artifactId>queue-consumer</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>1.3.5.RELEASE</version>
+                <configuration>
+                    <mainClass>com.sfl.coolmonkey.coolsocket.boot.socket.CoolSocketApplication</mainClass>
+                    <layout>JAR</layout>
+                    <executable>true</executable>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <configuration>
+                            <warName>ROOT</warName>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.spotify</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <registryUrl>${docker.registry.url}</registryUrl>
+                            <serverId>${docker.registry.url}</serverId>
+                            <pushImage>true</pushImage>
+                            <baseImage>tomcat:8.0-jre8</baseImage>
+                            <imageName>${docker.registry.url}/coolsocketms</imageName>
+                            <maintainer>CoolMonkey Team</maintainer>
+                            <runs>
+                                <run>rm -rf /usr/local/tomcat/webapps/ROOT</run>
+                                <run>rm -rf /usr/local/tomcat/webapps/docs</run>
+                                <run>rm -rf /usr/local/tomcat/webapps/examples</run>
+                                <run>rm -rf /usr/local/tomcat/webapps/host-manager</run>
+                                <run>rm -rf /usr/local/tomcat/webapps/manager</run>
+                            </runs>
+                            <imageTags>
+                                <imageTag>latest</imageTag>
+                                <imageTag>${bamboo.deploy.release}</imageTag>
+                            </imageTags>
+                            <resources>
+                                <resource>
+                                    <targetPath>/usr/local/tomcat/webapps</targetPath>
+                                    <directory>${project.build.directory}/</directory>
+                                    <include>ROOT.war</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/root/coolmonkey/</targetPath>
+                                    <directory>/opt/coolmonkey-docker/mount/app/coolsocketms/${project.environment}/
+                                    </directory>
+                                    <include>*</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/root/coolmonkey/</targetPath>
+                                    <directory>/opt/coolmonkey-docker/tools/newrelic/</directory>
+                                    <include>newrelic.jar</include>
+                                </resource>
+                            </resources>
+                            <exposes>8080</exposes>
+                            <entryPoint>["catalina.sh", "run"]</entryPoint>
+                        </configuration>
+                    </plugin>
+                </plugins>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-war-plugin</artifactId>
+                            <version>${maven.war.plugin.version}</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>com.spotify</groupId>
+                            <artifactId>docker-maven-plugin</artifactId>
+                            <version>${docker.maven.plugin.version}</version>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+    </profiles>
+</project>

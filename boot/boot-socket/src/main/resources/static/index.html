@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello WebSocket</title>
+    <script src="sockjs.js"></script>
+    <script src="stomp.js"></script>
+    <script type="text/javascript">
+
+        var stompClient = null;
+
+        var socket = null;
+
+        var authenticationSubscription = null;
+
+        function setConnected(connected) {
+            document.getElementById('connect').disabled = connected;
+            document.getElementById('disconnect').disabled = !connected;
+            document.getElementById('conversationDiv').style.visibility = connected ? 'visible' : 'hidden';
+            document.getElementById('response').innerHTML = '';
+        }
+
+        function connect() {
+            socket = new SockJS('/coolsocket', {}, {headers: {"foo": "boo"}});
+            stompClient = Stomp.over(socket);
+            stompClient.connect({"foo": "boo"}, function (frame) {
+
+                setConnected(true);
+                console.log('Connected: ' + frame);
+
+                stompClient.subscribe('/topic/greetings/arthur', function (greeting) {
+                    showGreeting(JSON.parse(greeting.body).content);
+                });
+
+                stompClient.subscribe('/topic/greetings/foo', function (greeting) {
+                    showGreeting(JSON.parse(greeting.body).content);
+                });
+
+                stompClient.subscribe('/user/arthur/reply', function (greeting) {
+                    showGreeting(JSON.parse(greeting.body).content);
+                });
+            });
+        }
+
+        function disconnect() {
+            if (stompClient != null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log("Disconnected");
+        }
+
+        function sendName() {
+            var name = document.getElementById('name').value;
+            stompClient.send(
+                "/app/greeting", // destination
+                {user: "arthur"}, // headers
+                JSON.stringify({'name': name}) // message
+            );
+        }
+
+        function authenticate() {
+//            var userUuid = document.getElementById("userUuid").value;
+            var userUuid = 'a73f7591-e83b-48b3-928e-fed0e511c88a';
+            if (authenticationSubscription) {
+                authenticationSubscription.unsubscribe();
+            }
+            authenticationSubscription = stompClient.subscribe('/user/' + userUuid + '/authentication', function (authentication) {
+                showAuthenticationMessage(authentication.body);
+            });
+            stompClient.send(
+                "/app/authentication/authenticate",
+                {},
+                JSON.stringify({
+                    'userUuid': userUuid,
+                    'companyUuid': '4d6ccfd1-e05c-4873-9b4d-564e8cab1a81'
+                })
+            );
+        }
+
+        function showAuthenticationMessage(message) {
+            var authenticationResponse = document.getElementById('authenticationResponse');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message));
+            authenticationResponse.appendChild(p);
+        }
+
+        function showGreeting(message) {
+            var response = document.getElementById('response');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message));
+            response.appendChild(p);
+        }
+    </script>
+</head>
+<body onload="disconnect()">
+<noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript being
+    enabled. Please enable
+    Javascript and reload this page!</h2></noscript>
+<div>
+    <div>
+        <button id="connect" onclick="connect();">Connect</button>
+        <button id="disconnect" disabled="disabled" onclick="disconnect();">Disconnect</button>
+    </div>
+    <div id="conversationDiv">
+        <label>What is your name?</label><input type="text" id="name"/>
+        <button id="sendName" onclick="sendName();">Send</button>
+        <p id="response"></p>
+    </div>
+    <div id="authenticationDiv">
+        <label>user uuid: </label><input type="text" id="userUuid"/>
+        <button id="authenticate" onclick="authenticate();">Authenticate</button>
+        <p id="authenticationResponse"></p>
+    </div>
+</div>
+</body>
+</html>
